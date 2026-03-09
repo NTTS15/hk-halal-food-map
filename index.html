@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>伊路同行 - HK Halal-Food-Map？</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<script src="https://maps.googleapis.com/maps/api/js?v=weekly"></script>
+<style>
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 1: CSS VARIABLES & RESET
+     ══════════════════════════════════════════════════════════════ */
+  :root {
+    --navy: #0a1628;
+    --deep: #0d1f3c;
+    --mid: #162d52;
+    --accent: #c9a84c;
+    --gold: #f0c040;
+    --teal: #1a9c8a;
+    --light: #e8eef6;
+    --muted: #8fa3bf;
+    --white: #fff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--navy);
+    color: var(--light);
+    font-family: 'Noto Sans TC', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background decorations */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 10% 20%, #1a3a6622 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 80%, #c9a84c11 0%, transparent 50%),
+      linear-gradient(160deg, #0a1628 0%, #0d1f3c 50%, #071020 100%);
+    z-index: -2;
+    pointer-events: none;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cpath d='M40 0 L80 40 L40 80 L0 40 Z' fill='none' stroke='%23c9a84c' stroke-width='0.3' opacity='0.15'/%3E%3C/svg%3E");
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 2: HEADER
+     ══════════════════════════════════════════════════════════════ */
+  header {
+    padding: 1.2rem 1.5rem 0.9rem;
+    text-align: center;
+    border-bottom: 1px solid #c9a84c33;
+    background: linear-gradient(180deg, #0a162899 0%, transparent 100%);
+    backdrop-filter: blur(4px);
+  }
+
+  .crescent {
+    font-size: 1.6rem;
+    display: block;
+    margin-bottom: 0.15rem;
+    filter: drop-shadow(0 0 12px #c9a84c88);
+  }
+
+  header h1 {
+    font-family: 'Noto Serif TC', serif;
+    font-size: clamp(1.1rem, 3.5vw, 1.8rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, #f0c040, #c9a84c, #e8d090);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.3;
+    letter-spacing: .05em;
+  }
+
+  header p.subtitle {
+    margin-top: .3rem;
+    font-size: .75rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  header a.sl {
+    color: var(--teal);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--teal);
+    font-size: .73rem;
+  }
+
+  header a.sl:hover {
+    color: var(--gold);
+    border-color: var(--gold);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 3: FILTERS BAR
+     ══════════════════════════════════════════════════════════════ */
+  .filters {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    background: #0d1f3cdd;
+    border-bottom: 1px solid #1a3a66;
+    backdrop-filter: blur(8px);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+
+  /* Mobile filter toggle button - hidden on desktop */
+  .filter-toggle {
+    display: none;
+  }
+
+  .filter-options {
+    display: contents; /* Makes children part of parent flex */
+  }
+
+  .fl {
+    font-size: .9rem;
+    color: var(--muted);
+    white-space: nowrap;
+    font-weight: 500;
+  }
+
+  select {
+    background: var(--mid);
+    color: var(--light);
+    border: 1px solid #c9a84c55;
+    border-radius: 8px;
+    padding: .6rem 2.4rem .6rem 1rem;
+    font-size: .95rem;
+    font-family: inherit;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23c9a84c' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right .8rem center;
+    transition: all .2s ease;
+  }
+
+  select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(201,168,76,0.2);
+  }
+
+  select:hover {
+    border-color: var(--accent);
+  }
+
+  .cb {
+    margin-left: auto;
+    background: #c9a84c22;
+    border: 1px solid var(--accent);
+    color: var(--gold);
+    padding: .5rem 1rem;
+    border-radius: 20px;
+    font-size: .9rem;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  /* Filter toggle right section (for mobile) */
+  .filter-toggle-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  /* Desktop badge - visible only on desktop */
+  .desktop-badge {
+    display: inline-block;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 4: MAIN LAYOUT (Desktop: 2-column grid)
+     ══════════════════════════════════════════════════════════════ */
+  .main-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    grid-template-rows: 1fr auto;
+    height: calc(100vh - 150px);
+    min-height: 500px;
+  }
+
+  /* Sidebar - restaurant cards list */
+  .sidebar {
+    order: 1;
+    overflow-y: auto;
+    background: #091525ee;
+    border-right: 1px solid #1a3a66;
+    backdrop-filter: blur(10px);
+    padding: .5rem;
+    grid-row: 1 / 2;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-track { background: #0a1628; border-radius: 3px; }
+  .sidebar::-webkit-scrollbar-thumb { background: #c9a84c44; border-radius: 3px; }
+  .sidebar::-webkit-scrollbar-thumb:hover { background: #c9a84c66; }
+
+  /* Map container */
+  .map-wrap {
+    position: relative;
+    order: 2;
+    grid-row: 1 / 2;
+  }
+
+  #map {
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+
+  /* Mobile disclaimer - hidden on desktop */
+  .mobile-disclaimer {
+    display: none;
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 4.5: FOOTER (Desktop)
+     ══════════════════════════════════════════════════════════════ */
+  footer {
+    text-align: center;
+    padding: .6rem;
+    font-size: .66rem;
+    color: var(--muted);
+    border-top: 1px solid #1a3a66;
+    line-height: 1.8;
+  }
+
+  footer a {
+    color: var(--teal);
+    text-decoration: none;
+  }
+
+  footer a:hover {
+    color: var(--gold);
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     SECTION 5: MOBILE RESPONSIVE STYLES (≤768px)
+     ══════════════════════════════════════════════════════════════ */
+  @media (max-width: 768px) {
+
+    /* --- Header: Compact --- */
+    header {
+      padding: 0.8rem 1rem 0.6rem;
+    }
+
+    .crescent {
+      font-size: 1.3rem;
+      margin-bottom: 0.1rem;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+    }
+
+    header p.subtitle {
+      display: none; /* Hide subtitle on mobile to save space */
+    }
+
+    /* --- Filters: Collapsible --- */
+    .filters {
+      padding: 0.7rem 1rem;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .filter-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--light);
+      font-size: 0.95rem;
+      font-family: inherit;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .filter-toggle-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .filter-toggle-icon {
+      transition: transform 0.3s ease;
+    }
+
+    .filter-toggle.active .filter-toggle-icon {
+      transform: rotate(180deg);
+    }
+
+    .filter-options {
+      display: none;
+      flex-direction: column;
+      gap: 0.6rem;
+      width: 100%;
+      padding-top: 0.6rem;
+      border-top: 1px solid #1a3a66;
+      margin-top: 0.5rem;
+    }
+
+    .filter-options.show {
+      display: flex;
+    }
+
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .filter-row select {
+      flex: 1;
+    }
+
+    .fl {
+      font-size: 0.8rem;
+      min-width: 50px;
+    }
+
+    select {
+      padding: 0.5rem 2rem 0.5rem 0.8rem;
+      font-size: 0.9rem;
+    }
+
+    .cb {
+      margin-left: 0;
+      padding: 0.3rem 0.7rem;
+      font-size: 0.8rem;
+    }
+
+    /* Hide desktop badge on mobile */
+    .desktop-badge {
+      display: none;
+    }
+
+    /* --- Main Layout: Reordered for mobile --- */
+    .main-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: 50vh auto auto;
+      height: auto;
+      min-height: auto;
+    }
+
+    /* Order: 1=Map, 2=Disclaimer, 3=Cards */
+    .map-wrap {
+      order: 1;
+      grid-row: auto;
+    }
+
+    .mobile-disclaimer {
+      display: block;
+      order: 2;
+      padding: 0.6rem 1rem;
+      background: #091525;
+      border-top: 1px solid #1a3a66;
+      border-bottom: 1px solid #1a3a66;
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    .mobile-disclaimer a {
+      color: var(--teal);
+      text-decoration: none;
+    }
+
+    .sidebar {
+      order: 3;
+      grid-row: auto;
+      border-right: none;
+      border-top: none;
+
+      /* Show ~3 cards height, scroll for more */
+      max-height: 280px;
+      min-height: 150px;
+      overflow-y: auto;
+    }
+
+    /* Compact cards for mobile */
+    .sidebar .rc {
+      padding: 0.7rem 0.9rem;
+      margin: 0.3rem 0.5rem;
+    }
+
+    .sidebar .rn {
+      font-size: 0.9rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .sidebar .ra {
+      font-size: 0.75rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .sidebar .tags {
+      margin-top: 0.4rem;
+    }
+
+    .sidebar .nav-btn {
+      font-size: 0.7rem;
+      padding: 0.4rem 0.7rem;
+      margin-top: 0.5rem;
+    }
+
+    /* --- Legend: Repositioned --- */
+    .legend {
+      bottom: 10px;
+      right: 5px;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.6rem;
+    }
+
+    /* --- Footer: Hidden on mobile (using mobile-disclaimer instead) --- */
+    footer {
+      display: none;
+    }
+  }
+
+  /* Modern Shop Card - Dark Theme */
+  .rc{padding:1.1rem 1.2rem;margin:.5rem;background:#0d1f3c;border-radius:12px;cursor:pointer;transition:all .2s ease;border:1px solid #1a3a6688;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
+  .rc:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.3);border-color:var(--accent);}
+  .rc.active{background:#162d52;border-color:var(--accent);box-shadow:0 4px 16px rgba(201,168,76,0.2);}
+
+  .rn{font-family:'Noto Serif TC',serif;font-size:1.05rem;font-weight:700;color:var(--white);margin-bottom:.5rem;line-height:1.4;}
+  .ra{font-size:.85rem;color:#9db5d0;line-height:1.5;margin-bottom:.6rem;}
+  .tags{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center;margin-top:.6rem;}
+  .tag{font-size:.75rem;padding:.35rem .7rem;border-radius:20px;font-weight:600;}
+  .tag-hki{background:#1a3a6688;color:#7ab0ee;border:1px solid #2a60ba;}
+  .tag-kln{background:#2a1a5088;color:#b08aff;border:1px solid #5a3aaa;}
+  .tag-nt{background:#1a3a2088;color:#7acc88;border:1px solid #2a8a44;}
+  .tag-ltau{background:#3a2a1088;color:#d4b050;border:1px solid #8a7030;}
+  .tag-hotel{background:#2a2a1a88;color:#d8c870;border:1px solid #8a7a30;}
+  .tag-cuisine{background:#1a2a3a88;color:#7ac0dd;border:1px solid #3a6a8a;}
+  .cert-H{color:#2ecc71;font-weight:700;}.cert-HK{color:#5ab0f0;font-weight:700;}.cert-HF{color:#dd88dd;font-weight:700;}
+  .nav-btn{font-size:.8rem;color:var(--teal);text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;margin-top:.7rem;padding:.5rem .9rem;background:#1a9c8a15;border:1px solid #1a9c8a44;border-radius:8px;transition:all .2s ease;font-weight:500;}
+  .nav-btn:hover{background:#1a9c8a33;color:var(--gold);border-color:var(--gold);transform:translateX(3px);}
+  .no-result{text-align:center;padding:3rem 1.5rem;color:var(--muted);font-size:.9rem;}
+  .gm-style .gm-style-iw-c{background:#0d1f3c!important;border:1px solid #c9a84c66;border-radius:8px;padding:0!important;box-shadow:0 8px 30px #00000088;}
+  .gm-style .gm-style-iw-d{overflow:auto!important;padding:10px 14px;}
+  .gm-style .gm-style-iw-tc::after{background:#0d1f3c!important;}
+  .gm-style .gm-ui-hover-effect{filter:invert(1);}
+  .pn{font-family:'Noto Serif TC',serif;font-weight:700;font-size:.88rem;color:#c9a84c;margin-bottom:3px;}
+  .pa{font-size:.7rem;color:#9db5d0;line-height:1.45;margin-bottom:4px;}
+  .pi{font-size:.65rem;color:#7a9ab8;margin-bottom:5px;}
+  .pnav{font-size:.67rem;color:#1a9c8a;text-decoration:none;}
+  .pnav:hover{color:#f0c040;}
+  .ptags{display:flex;gap:3px;flex-wrap:wrap;margin-top:5px;}
+
+  /* Legend overlay on map */
+  .legend{position:absolute;bottom:20px;right:10px;z-index:999;background:#0d1f3cee;border:1px solid #c9a84c33;border-radius:7px;padding:.55rem .85rem;font-size:.66rem;color:var(--muted);backdrop-filter:blur(8px);pointer-events:none;line-height:1.9;}
+  .li{display:flex;align-items:center;gap:.4rem;}
+  .ldot{width:10px;height:10px;border-radius:50%;border:1.5px solid white;flex-shrink:0;}
+</style>
+</head>
+<body>
+<header>
+  <span class="crescent">☪</span>
+  <h1>伊路同行 — HK Halal-Food-Map</h1>
+  <p class="subtitle">資料來源：<a href="https://www.iuhk.org/images/Others/Halah-Food/Halal-List_en.pdf" target="_blank" class="sl">IUHK 官方清真認證清單</a>（2025年12月更新）· 共收錄 <strong style="color:var(--gold)">170+</strong> 間 · 點 Marker 或列表查看詳情及導航</p>
+</header>
+<!-- ══════════════════════════════════════════════════════════════
+     FILTERS BAR
+     - Desktop: Horizontal row with all filters visible
+     - Mobile: Collapsible panel with toggle button
+     ══════════════════════════════════════════════════════════════ -->
+<div class="filters">
+  <!-- Mobile toggle button (hidden on desktop) -->
+  <button class="filter-toggle" id="filterToggle" onclick="toggleFilters()">
+    <span class="filter-toggle-left">
+      <span>☰</span>
+      <span>篩選餐廳</span>
+    </span>
+    <span class="filter-toggle-right">
+      <span class="cb" id="countBadgeMobile">共 ── 間</span>
+      <span class="filter-toggle-icon">▼</span>
+    </span>
+  </button>
+
+  <!-- Filter options (collapsible on mobile) -->
+  <div class="filter-options" id="filterOptions">
+    <div class="filter-row">
+      <span class="fl">🗺 地區</span>
+      <select id="regionFilter" onchange="applyFilters()">
+        <option value="all">所有地區</option>
+        <option value="港島">港島</option>
+        <option value="九龍">九龍</option>
+        <option value="新界">新界</option>
+        <option value="大嶼山">大嶼山</option>
+        <option value="酒店">酒店餐廳</option>
+      </select>
+    </div>
+    <div class="filter-row">
+      <span class="fl">🍽 類別</span>
+      <select id="typeFilter" onchange="applyFilters()">
+        <option value="all">所有類別</option>
+        <option value="restaurant">一般餐廳</option>
+        <option value="fastfood">快餐 / Fast Food</option>
+        <option value="hotel">酒店</option>
+      </select>
+    </div>
+    <div class="filter-row">
+      <span class="fl">📜 認證</span>
+      <select id="certFilter" onchange="applyFilters()">
+        <option value="all">所有認證</option>
+        <option value="H">H — 清真餐廳</option>
+        <option value="HK">HK — 清真廚房</option>
+        <option value="HF">HF — 清真友善</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Desktop count badge -->
+  <span class="cb desktop-badge" id="countBadge">共 ── 間</span>
+</div>
+<!-- ══════════════════════════════════════════════════════════════
+     MAIN LAYOUT
+     - Desktop: 2-column (sidebar left, map right)
+     - Mobile: Stacked (map → disclaimer → cards)
+     ══════════════════════════════════════════════════════════════ -->
+<div class="main-layout">
+  <!-- Map Section -->
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="legend">
+      <div style="color:var(--gold);font-weight:700;margin-bottom:3px;font-size:.68rem;">認證類別</div>
+      <div class="li"><span class="ldot" style="background:#2ecc71"></span>H — 清真餐廳</div>
+      <div class="li"><span class="ldot" style="background:#3a9ee0"></span>HK — 清真廚房</div>
+      <div class="li"><span class="ldot" style="background:#cc77cc"></span>HF — 清真友善</div>
+    </div>
+  </div>
+
+  <!-- Mobile Disclaimer (visible only on mobile, between map and cards) -->
+  <div class="mobile-disclaimer">
+    ⚠️ 本頁僅供參考，認證有效期請向商戶確認 ☪<br>
+    資料來源：<a href="https://www.iuhk.org/images/Others/Halah-Food/Halal-List_en.pdf" target="_blank">IUHK 清真認證名單</a>
+  </div>
+
+  <!-- Restaurant Cards Sidebar -->
+  <div class="sidebar" id="sidebar"></div>
+</div>
+<footer>
+  資料來源：<a href="https://www.iuhk.org/images/Others/Halah-Food/Halal-List_en.pdf" target="_blank">IUHK 清真認證食肆名單 (Updated 31 Dec 2025)</a>
+  ｜H=清真餐廳 HK=清真廚房 HF=清真友善 ｜地圖 © Google Maps<br>
+  查詢：<a href="mailto:halal@islamictrusthk.org">halal@islamictrusthk.org</a> ｜本頁僅供參考，認證有效期請向商戶確認 ☪
+</footer>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// HK HALAL FOOD MAP - JavaScript
+// ═══════════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────────
+// MOBILE FILTER TOGGLE
+// ─────────────────────────────────────────────────────────────────
+function toggleFilters() {
+  var toggle = document.getElementById('filterToggle');
+  var options = document.getElementById('filterOptions');
+  toggle.classList.toggle('active');
+  options.classList.toggle('show');
+}
+
+// Update both mobile and desktop count badges
+function updateCountBadge(count) {
+  var text = '共 ' + count + ' 間';
+  document.getElementById('countBadge').textContent = text;
+  document.getElementById('countBadgeMobile').textContent = text;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RESTAURANT DATA
+// Extracted from IUHK PDF (Dec 2025)
+// cert: H=Halal Restaurant | HK=Halal Kitchen | HF=Halal Friendly
+// ─────────────────────────────────────────────────────────────────
+const R = [
+  // ── HONG KONG ISLAND (52) ──
+  {id:1,  name:"27 Kebab House - Central",           area:"Central",      region:"港島", cuisine:"Turkish, Indian & Italian",         tel:"2795 2727", cert:"HK", expiry:"24/Jan/26", type:"restaurant", lat:22.2832,lng:114.1548, addr:"Shop D-E, 27 Hollywood Road, Central"},
+  {id:2,  name:"27 Kebab House - HKU",               area:"HKU",          region:"港島", cuisine:"Turkish, Indian & Italian",         tel:"2527 8877", cert:"H",  expiry:"24/Jan/26", type:"restaurant", lat:22.2831,lng:114.1350, addr:"Portion of 1A/F, Fong Shu Chuen Amenities Centre, HKU"},
+  {id:3,  name:"27 Kebab House - Wanchai",           area:"Wan Chai",     region:"港島", cuisine:"Turkish, Indian & Italian",         tel:"2657 1116", cert:"HK", expiry:"24/Jan/27", type:"restaurant", lat:22.2768,lng:114.1725, addr:"Shop D, G/F, King Tao Building, 94 Lockhart Rd, Wan Chai"},
+  {id:4,  name:"Balady Lounge",                      area:"Central",      region:"港島", cuisine:"Egyptian",                          tel:"6894 8819", cert:"HK", expiry:"21/Dec/26", type:"restaurant", lat:22.2820,lng:114.1540, addr:"Shop H, 15 Wing Wah Lane, G/F Winner Building, 27-29 D'Aguilar Street, Central"},
+  {id:5,  name:"Basmati",                            area:"Sheung Wan",   region:"港島", cuisine:"Indian",                            tel:"9420 3094", cert:"HK", expiry:"08/Sep/26", type:"restaurant", lat:22.2858,lng:114.1512, addr:"1/F, 137-139 Connaught Road, Sheung Wan"},
+  {id:6,  name:"Big Pizza - 89 Lockhart Road",       area:"Wan Chai",     region:"港島", cuisine:"Italian Mix",                       tel:"2153 3363", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.2775,lng:114.1718, addr:"Shop 5, G/F, Wanchai Central Building, 89 Lockhart Road, Wan Chai"},
+  {id:7,  name:"BKK",                               area:"Central",      region:"港島", cuisine:"Thai",                              tel:"2330 0306", cert:"HK", expiry:"20/Feb/26", type:"restaurant", lat:22.2818,lng:114.1533, addr:"PMQ-Staunton, SG09-SG14, G/F, Block A, 35 Aberdeen Street, Central"},
+  {id:8,  name:"Bombay Dreams",                      area:"Central",      region:"港島", cuisine:"Indian",                            tel:"2971 0001", cert:"HK", expiry:"08/Sep/26", type:"restaurant", lat:22.2817,lng:114.1559, addr:"1/F, Winning Centre, 46 Wyndham Street, Central"},
+  {id:9,  name:"Bombay To Go",                       area:"Sheung Wan",   region:"港島", cuisine:"Indian",                            tel:"2805 1515", cert:"H",  expiry:"09/Mar/26", type:"restaurant", lat:22.2863,lng:114.1505, addr:"Shop 1, G/F, Po Thai Building, 9 Possession Street, Sheung Wan"},
+  {id:10, name:"Carat Fine Indian - Central",        area:"Sheung Wan",   region:"港島", cuisine:"Indian",                            tel:"2391 3929", cert:"HK", expiry:"20/Jan/26", type:"restaurant", lat:22.2860,lng:114.1508, addr:"9 Possession Street, Sheung Wan"},
+  {id:11, name:"Chaska",                             area:"Central",      region:"港島", cuisine:"Indian",                            tel:"5548 4530", cert:"HK", expiry:"19/Mar/26", type:"restaurant", lat:22.2808,lng:114.1528, addr:"Shop 2, G/F, Midland Court, 58-62 Caine Road, Central"},
+  {id:12, name:"Cheeky Buns - Cochrane Street",      area:"Central",      region:"港島", cuisine:"Fast Food",                         tel:"2581 2128", cert:"HK", expiry:"06/May/26", type:"fastfood",   lat:22.2822,lng:114.1536, addr:"Shop 5B, Cheung Fai Building, 45-47 Cochrane Street, Central"},
+  {id:13, name:"Chutney",                            area:"Central",      region:"港島", cuisine:"Modern Indian",                     tel:"2330 0027", cert:"HK", expiry:"20/Feb/26", type:"restaurant", lat:22.2815,lng:114.1557, addr:"4/F, Carfield Commercial Building, 77 Wyndham Street, Central"},
+  {id:14, name:"Cooking Lobo",                       area:"Wan Chai",     region:"港島", cuisine:"Indonesian",                        tel:"5404 8708", cert:"H",  expiry:"24/Apr/26", type:"restaurant", lat:22.2760,lng:114.1739, addr:"G/F, Shop 9E, Cactus Mansion, 1-19 McGregor Street, Wan Chai"},
+  {id:15, name:"Dicos",                              area:"North Point",  region:"港島", cuisine:"Fast Food",                         tel:"3615 0977", cert:"H",  expiry:"05/Sep/26", type:"fastfood",   lat:22.2910,lng:114.2048, addr:"Seng Ming Court, 375-377 King's Road, North Point"},
+  {id:16, name:"Dilliwale",                          area:"Causeway Bay", region:"港島", cuisine:"Indian",                            tel:"6900 1584", cert:"HK", expiry:"19/Mar/26", type:"restaurant", lat:22.2808,lng:114.1838, addr:"9/F, Kyoto Plaza, 491-499 Lockhart Road, Causeway Bay"},
+  {id:17, name:"Ebeneezer's - 24 Hollywood Rd",     area:"Central",      region:"港島", cuisine:"Indian, Italian & Middle Eastern",  tel:"2973 0081", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.2816,lng:114.1543, addr:"G/F, 24 Hollywood Road, Central"},
+  {id:18, name:"Ebeneezer's - 5 Lan Kwai Fong",     area:"Central",      region:"港島", cuisine:"Indian, Italian & Middle Eastern",  tel:"2529 3738", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.2813,lng:114.1550, addr:"G/F, 5 Lan Kwai Fong, Central"},
+  {id:19, name:"Ebeneezer's - 52 Lockhart Rd",      area:"Wan Chai",     region:"港島", cuisine:"Indian, Italian & Middle Eastern",  tel:"2157 0009", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.2773,lng:114.1722, addr:"G/F, 52 Lockhart Road, Wan Chai"},
+  {id:20, name:"Ebeneezer's - 89 Lockhart Rd",      area:"Wan Chai",     region:"港島", cuisine:"Indian, Italian & Middle Eastern",  tel:"2529 3738", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.2771,lng:114.1719, addr:"Shop 4, G/F, Wan Chai Central Building, 89 Lockhart Road"},
+  {id:21, name:"Ebeneezer's - HK Stadium",          area:"So Kon Po",    region:"港島", cuisine:"Indian, Italian & Middle Eastern",  tel:"2529 3738", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.2720,lng:114.1916, addr:"Concession No.18, HK Stadium, 55 Eastern Hospital Road, So Kon Po"},
+  {id:22, name:"Habib's - Tin Hau",                 area:"Tin Hau",      region:"港島", cuisine:"Indian & Middle Eastern",           tel:"2493 4000", cert:"HK", expiry:"04/Nov/26", type:"restaurant", lat:22.2842,lng:114.1920, addr:"Shop 7, G/F, Lee King Mansion, No. 83 Electric Road, Tin Hau"},
+  {id:23, name:"HKJC - Happy Valley Racecourse",    area:"Happy Valley",  region:"港島", cuisine:"International",                     tel:"2966 5895", cert:"HF", expiry:"17/Aug/26", type:"restaurant", lat:22.2712,lng:114.1836, addr:"Happy Valley Racecourse, Happy Valley"},
+  {id:24, name:"HKJC - The Hilltop in The Valley",  area:"Happy Valley",  region:"港島", cuisine:"International",                     tel:"2966 1377", cert:"HF", expiry:"18/Aug/26", type:"restaurant", lat:22.2708,lng:114.1840, addr:"25 Shan Kwong Road, Happy Valley"},
+  {id:25, name:"Islamic Centre Canteen",             area:"Wan Chai",     region:"港島", cuisine:"Chinese & Dim Sum",                 tel:"2834 8211", cert:"H",  expiry:"11/Oct/26", type:"restaurant", lat:22.2766,lng:114.1748, addr:"5/F, Masjid Ammar, 40 Oi Kwan Road, Wan Chai"},
+  {id:26, name:"Istanbul Turkish Kebabs & Grills",   area:"Wan Chai",     region:"港島", cuisine:"Turkish",                           tel:"2573 9101", cert:"HK", expiry:"31/Jan/26", type:"restaurant", lat:22.2779,lng:114.1731, addr:"Shop 3, G/F, Pao Woo Mansion, 177-179 Wan Chai Road"},
+  {id:27, name:"Istanbul Express",                   area:"Wan Chai",     region:"港島", cuisine:"Turkish",                           tel:"2865 0066", cert:"HK", expiry:"21/Dec/26", type:"restaurant", lat:22.2776,lng:114.1727, addr:"G/F No.66 Lockhart Road, Wan Chai"},
+  {id:28, name:"Jashan Celebrating Indian Cuisine",  area:"Central",      region:"港島", cuisine:"Indian",                            tel:"3105 5300", cert:"HK", expiry:"28/May/26", type:"restaurant", lat:22.2819,lng:114.1547, addr:"1/F, Amber Lodge, 23 Hollywood Road, Central"},
+  {id:29, name:"Jo Jo Indian Cuisine",               area:"Wan Chai",     region:"港島", cuisine:"Indian",                            tel:"2527 3776", cert:"HK", expiry:"28/May/26", type:"restaurant", lat:22.2774,lng:114.1715, addr:"2/F, David House, 37-39 Lockhart Road, Wan Chai"},
+  {id:30, name:"KFC - Ap Lei Chau",                 area:"Ap Lei Chau",  region:"港島", cuisine:"Fast Food",                         tel:"2433 8368", cert:"HF", expiry:"31/May/26", type:"fastfood",   lat:22.2448,lng:114.1572, addr:"Shop G14, G/F, Marina Square, 12A South Horizon Drive, Ap Lei Chau"},
+  {id:31, name:"KFC - Causeway Bay",                area:"Causeway Bay", region:"港島", cuisine:"Fast Food",                         tel:"2469 0703", cert:"HF", expiry:"05/Mar/26", type:"fastfood",   lat:22.2804,lng:114.1842, addr:"479 & 481 Hennesy Road, 29 Percival Street, Causeway Bay"},
+  {id:32, name:"KFC - Central",                     area:"Central",      region:"港島", cuisine:"Fast Food",                         tel:"2537 7527", cert:"HF", expiry:"23/Jul/26", type:"fastfood",   lat:22.2811,lng:114.1583, addr:"1/F, Unicorn Trade Center, 127-131 Des Voeux Road, Central"},
+  {id:33, name:"KFC - Chai Wan",                    area:"Chai Wan",     region:"港島", cuisine:"Fast Food",                         tel:"3407 4181", cert:"HF", expiry:"05/Mar/26", type:"fastfood",   lat:22.2687,lng:114.2368, addr:"Shop No. G8, Island Resort Mall, 28 Siu Sai Wan Road, Chai Wan"},
+  {id:34, name:"KFC - Kennedy Town",                area:"Kennedy Town", region:"港島", cuisine:"Fast Food",                         tel:"2818 9373", cert:"HF", expiry:"31/May/26", type:"fastfood",   lat:22.2812,lng:114.1285, addr:"Shop Restaurant B, 1/F, 116-122A Belcher's Street, Kennedy Town"},
+  {id:35, name:"KFC - Wan Chai",                    area:"Wan Chai",     region:"港島", cuisine:"Fast Food",                         tel:"2521 0115", cert:"HF", expiry:"31/May/26", type:"fastfood",   lat:22.2769,lng:114.1734, addr:"Shops 4 & 5 G/F, 112 Johnston Road, Wan Chai"},
+  {id:36, name:"LPSM",                              area:"Causeway Bay", region:"港島", cuisine:"Food Stall",                        tel:"6889 8543", cert:"H",  expiry:"16/Mar/26", type:"restaurant", lat:22.2802,lng:114.1847, addr:"Portion B of Shop 3&4, G/F, No. 3A Sharp Street West, Causeway Bay"},
+  {id:37, name:"Mecca Restaurant",                  area:"Quarry Bay",   region:"港島", cuisine:"Middle Eastern / Pakistani",        tel:"5546 6477", cert:"H",  expiry:"13/Feb/26", type:"restaurant", lat:22.2867,lng:114.2163, addr:"Shop L, G/F, Oceanic Building, 22-46 Finnie Street, Quarry Bay"},
+  {id:38, name:"Mr. Yusaf",                         area:"Wan Chai",     region:"港島", cuisine:"Middle Eastern / Indian",           tel:"95805173",  cert:"H",  expiry:"19/Dec/26", type:"restaurant", lat:22.2762,lng:114.1742, addr:"G/F, 1 Tak Yan Street, Wanchai"},
+  {id:39, name:"Onion Hub - Tin Hau",               area:"Tin Hau",      region:"港島", cuisine:"Pakistani",                         tel:"5919 8960", cert:"H",  expiry:"16/Jan/26", type:"restaurant", lat:22.2845,lng:114.1917, addr:"Shop A4, G/F, 96 Electric Road, Tin Hau"},
+  {id:40, name:"Palki Indian Cuisine",               area:"Tin Hau",      region:"港島", cuisine:"Indian",                            tel:"3485 5655", cert:"HK", expiry:"15/Jan/26", type:"restaurant", lat:22.2839,lng:114.1914, addr:"G/F No.2, Tsing Fung Street, Tin Hau"},
+  {id:41, name:"PASTEAKO",                          area:"Central",      region:"港島", cuisine:"International",                     tel:"2330 0129", cert:"HK", expiry:"23/Oct/25", type:"restaurant", lat:22.2820,lng:114.1531, addr:"HG01-HG05, G/F, Block B Hollywood, PMQ, 35 Aberdeen Street, Central"},
+  {id:42, name:"Priyo Shaad",                        area:"Central",      region:"港島", cuisine:"Bangladeshi",                       tel:"6737 4607", cert:"HK", expiry:"09/Jan/26", type:"restaurant", lat:22.2817,lng:114.1530, addr:"G/F, 29 Aberdeen Street, Central"},
+  {id:43, name:"Saffron",                            area:"Central",      region:"港島", cuisine:"Persian",                           tel:"2595 9900", cert:"H",  expiry:"07/Sep/26", type:"restaurant", lat:22.2815,lng:114.1534, addr:"Shop E, G/F, Garley Building, 47-53 Graham Street, Soho, Central"},
+  {id:44, name:"Shahrazad",                          area:"Central",      region:"港島", cuisine:"Lebanese",                          tel:"2330 0242", cert:"HK", expiry:"20/Feb/26", type:"restaurant", lat:22.2816,lng:114.1560, addr:"2/F, Carfield Commercial Building, 77 Wyndham Street, Central"},
+  {id:45, name:"Tandoori Junction - Tin Hau",        area:"Tin Hau",      region:"港島", cuisine:"Indian",                            tel:"2146 8282", cert:"HK", expiry:"04/Nov/26", type:"restaurant", lat:22.2843,lng:114.1924, addr:"G/F, 101 Electric Road, Tin Hau"},
+  {id:46, name:"Woodlands - Wan Chai",               area:"Wan Chai",     region:"港島", cuisine:"Indian Vegetarian",                 tel:"2129 2188", cert:"HK", expiry:"26/Jan/26", type:"restaurant", lat:22.2778,lng:114.1730, addr:"1/F, Dennies House, 20 Luard Road, Wan Chai"},
+  {id:47, name:"Whu Zhi Jian Noodles - Wan Chai",   area:"Wan Chai",     region:"港島", cuisine:"Lanzhou Noodles",                   tel:"",          cert:"H",  expiry:"31/Jan/26", type:"restaurant", lat:22.2773,lng:114.1727, addr:"Shop A2, G/F, 298 Hennesy Road, Wan Chai"},
+  {id:48, name:"Wu Zhi Jian Noodles - CWB",         area:"Causeway Bay", region:"港島", cuisine:"Lanzhou Noodles",                   tel:"",          cert:"H",  expiry:"05/Jun/26", type:"restaurant", lat:22.2807,lng:114.1852, addr:"G/F, 501 Lockhart Road, Causeway Bay"},
+  {id:49, name:"Yaqut's Lanzhou Noodles - WC",      area:"Wan Chai",     region:"港島", cuisine:"Lanzhou Noodles",                   tel:"6822 3128", cert:"HK", expiry:"26/Aug/26", type:"restaurant", lat:22.2774,lng:114.1720, addr:"G/F, Shop A, Gaylord Commercial Building, 114-118 Lockhart Road, Wan Chai"},
+  {id:50, name:"Yaqut's Lanzhou Noodles - TH",      area:"Tin Hau",      region:"港島", cuisine:"Lanzhou Noodles",                   tel:"6822 3128", cert:"HK", expiry:"16/May/26", type:"restaurant", lat:22.2847,lng:114.1926, addr:"Shop B1 & B2, Portion of G/F, Parkview Mansion, 3 Lau Sin Street, Tin Hau"},
+  {id:51, name:"Yuan",                               area:"Central",      region:"港島", cuisine:"Modern Chinese, Vegetarian",        tel:"2728 7278", cert:"HK", expiry:"06/Jan/26", type:"restaurant", lat:22.2824,lng:114.1540, addr:"Shop 2, G/F, Chinachem Hollywood Centre, 1-13 Hollywood Road, Central"},
+  {id:52, name:"Chinesology",                        area:"Central",      region:"港島", cuisine:"Chinese",                           tel:"6809 2299", cert:"HK", expiry:"In Process",type:"restaurant", lat:22.2860,lng:114.1577, addr:"Shop 3101-3107, Level 3, IFC Mall, 8 Finance Street, Central"},
+
+  // ── KOWLOON (73) ──
+  {id:100,name:"27 Kebab House - Hart Avenue",       area:"Tsim Sha Tsui",region:"九龍", cuisine:"Turkish, Indian & Italian",         tel:"3612 4676", cert:"HK", expiry:"27/Sep/26", type:"restaurant", lat:22.2993,lng:114.1727, addr:"Shop 1, G/F, Supreme house, No.2A, Hart Avenue, Tsim Sha Tsui"},
+  {id:101,name:"Anjappar Dakshin Indian Restaurant", area:"Tsim Sha Tsui",region:"九龍", cuisine:"South Indian",                      tel:"3428 5757", cert:"HK", expiry:"31/Jul/26", type:"restaurant", lat:22.2985,lng:114.1715, addr:"Unit-202, Multifield Plaza, No.3-5 Prat Avenue, Tsim Sha Tsui"},
+  {id:102,name:"Avanti Bistro",                      area:"Jordan",        region:"九龍", cuisine:"International",                     tel:"",          cert:"HK", expiry:"08/Jul/26", type:"restaurant", lat:22.3052,lng:114.1697, addr:"2/F, Double Set Commercial Centre, No 37A-B Jordan Road"},
+  {id:103,name:"Burger Mate",                        area:"Tsim Sha Tsui",region:"九龍", cuisine:"American Burger",                   tel:"6461 2771", cert:"H",  expiry:"15/Jul/26", type:"fastfood",   lat:22.2987,lng:114.1740, addr:"Shop A, G/F Brilliant Court, 78 Kimberley Road, Tsim Sha Tsui"},
+  {id:104,name:"Bushra",                             area:"Tsim Sha Tsui",region:"九龍", cuisine:"Middle Eastern",                    tel:"6172 3591", cert:"HK", expiry:"31/Jul/26", type:"restaurant", lat:22.2982,lng:114.1753, addr:"Shop 6, G/F & Shop 16, UG/F, Tsim Sha Tsui Centre, 66 Mody Road"},
+  {id:105,name:"Casablanca Restaurant & Bar",        area:"Tsim Sha Tsui",region:"九龍", cuisine:"Moroccan",                          tel:"5460 3060", cert:"H",  expiry:"24/Nov/26", type:"restaurant", lat:22.2974,lng:114.1710, addr:"Rm A&B, 1/F, Surson Commercial Building, 140-142 Austin Road, TST"},
+  {id:106,name:"Carat Fine Indian - TST",            area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian",                            tel:"2391 3929", cert:"HK", expiry:"20/Jan/26", type:"restaurant", lat:22.2983,lng:114.1718, addr:"4/F, Winfield Commercial Building, 6-8A Part Avenue, Tsim Sha Tsui"},
+  {id:107,name:"Chrisly Café",                       area:"Tsim Sha Tsui",region:"九龍", cuisine:"Bakery",                            tel:"2666 7766", cert:"HK", expiry:"06/Feb/26", type:"restaurant", lat:22.2998,lng:114.1743, addr:"G7&G8, Ground Floor, Harbour Pinnacle, 8 Minden Avenue, Tsim Sha Tsui"},
+  {id:108,name:"Crispi Bun",                         area:"Tsim Sha Tsui",region:"九龍", cuisine:"Fast Food",                         tel:"6196 2053", cert:"H",  expiry:"24/Mar/26", type:"fastfood",   lat:22.2996,lng:114.1758, addr:"Shop 12A, G/F, Block A, Windsor Mansion, 29-31 Chatham Road South, TST"},
+  {id:109,name:"Curry Culture",                      area:"Tsim Sha Tsui",region:"九龍", cuisine:"Modern Indian",                     tel:"3489 6719", cert:"H",  expiry:"12/Feb/26", type:"restaurant", lat:22.2997,lng:114.1740, addr:"5 Minden Avenue, Tsim Sha Tsui"},
+  {id:110,name:"Curry Leaf Indian Cuisine",           area:"Jordan",        region:"九龍", cuisine:"Indian",                            tel:"8100 0911", cert:"HK", expiry:"20/Sep/26", type:"restaurant", lat:22.3055,lng:114.1694, addr:"G/F, M/F, Mau Lam Commercial Building, 16-18 Mau Lam Street, Jordan"},
+  {id:111,name:"Dicos-Wuzhijian Beef Noodle",        area:"Mong Kok",      region:"九龍", cuisine:"Fast Food & Lanzhou Noodles",       tel:"",          cert:"HK", expiry:"07/Nov/26", type:"fastfood",   lat:22.3196,lng:114.1688, addr:"G/F Sai Yeung Building, 190-192 Sai Yeung Choi Street South, Mong Kok"},
+  {id:112,name:"Dignity Kitchen - Halal",            area:"Mong Kok",      region:"九龍", cuisine:"Singaporean",                       tel:"2561 2633", cert:"HF", expiry:"13/Feb/26", type:"restaurant", lat:22.3190,lng:114.1680, addr:"Shop 201 & 202, 618 Shanghai Street, Mong Kok"},
+  {id:113,name:"Ebeneezer's - CityU",                area:"City Univ",     region:"九龍", cuisine:"Indian, Italian & Middle Eastern",  tel:"2395 3155", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.3371,lng:114.1742, addr:"Indoor 5380 Cafe, R5013, 5/F, Amenities Bldg, City University of HK"},
+  {id:114,name:"Ebeneezer's - Hung Hom",             area:"Hung Hom",      region:"九龍", cuisine:"Indian, Italian & Middle Eastern",  tel:"2781 1007", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.3074,lng:114.1875, addr:"Shop A, G/F, Hung Hom Garden, 3 Tsing Chau Street, Hung Hom"},
+  {id:115,name:"Ebeneezer's - Kwai Chung",           area:"Kwai Chung",    region:"九龍", cuisine:"Indian, Italian & Middle Eastern",  tel:"",          cert:"HK", expiry:"23/Aug/26", type:"restaurant", lat:22.3620,lng:114.1285, addr:"Shop No. G02, G/F, LIFE@KCC, Nos. 72-79 Kwai Cheong Road, Kwai Chung"},
+  {id:116,name:"Ebeneezer's - Prat Ave",             area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian, Italian & Middle Eastern",  tel:"3580 1355", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.2986,lng:114.1716, addr:"Shop A, G/F, Winfield Commercial Building, 6-8A Prat Avenue, TST"},
+  {id:117,name:"Ebeneezer's - HKMU",                 area:"Ho Man Tin",    region:"九龍", cuisine:"Indian, Italian & Middle Eastern",  tel:"",          cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.3265,lng:114.1800, addr:"P21, G/F, HK Metropolitan University"},
+  {id:118,name:"Farah's Kitchen",                    area:"Tai Kok Tsui",  region:"九龍", cuisine:"Indian, Italian & Middle Eastern",  tel:"9050 3896", cert:"H",  expiry:"26/Feb/26", type:"restaurant", lat:22.3264,lng:114.1628, addr:"Flat No.15, Ground Floor, Fuk Sing Factory Building, 2 Walnut St, Tai Kok Tsui"},
+  {id:119,name:"Flaming Frango",                     area:"Tsim Sha Tsui",region:"九龍", cuisine:"Portugese",                         tel:"2333 1201", cert:"HK", expiry:"25/Nov/26", type:"restaurant", lat:22.3043,lng:114.1607, addr:"Shop R009 Civic Square, Elements Mall, 1 Austin Road West, TST"},
+  {id:120,name:"Fog Restaurant (Antipasto Express)",  area:"Tsim Sha Tsui",region:"九龍", cuisine:"Italian",                           tel:"2153 3686", cert:"H",  expiry:"09/Feb/26", type:"restaurant", lat:22.2983,lng:114.1750, addr:"Shop G35, G/F, Peninsula Centre, 67 Mody Road, Tsim Sha Tsui"},
+  {id:121,name:"Fresh In Spiced Out",                area:"San Po Kong",   region:"九龍", cuisine:"Middle Eastern",                    tel:"5398 3881", cert:"H",  expiry:"08/Sep/26", type:"restaurant", lat:22.3368,lng:114.2036, addr:"5A2-J, Galaxy Factory Building, 25-27 Luk Hop St, San Po Kong"},
+  {id:122,name:"Gaylord Indian Restaurant & Bar",    area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian",                            tel:"2376 1001", cert:"HK", expiry:"01/Sep/26", type:"restaurant", lat:22.2988,lng:114.1695, addr:"5/F, Prince Tower, 12A Peking Road, Tsim Sha Tsui"},
+  {id:123,name:"Great Thai Food",                    area:"Tai Kok Tsui",  region:"九龍", cuisine:"Thai",                              tel:"5303 3325", cert:"HK", expiry:"25/Jun/26", type:"restaurant", lat:22.3268,lng:114.1622, addr:"Shop 29, G/F, Chung Mei Building, 16 Chung Wui Street, Tai Kok Tsui"},
+  {id:124,name:"Habib's - Kwun Tong",                area:"Kwun Tong",     region:"九龍", cuisine:"Indian & Middle Eastern",           tel:"2510 9008", cert:"HK", expiry:"04/Nov/26", type:"restaurant", lat:22.3122,lng:114.2256, addr:"Shop 5F4, G/F, Hung To Centre, 94-96 How Ming Street, Kwun Tong"},
+  {id:125,name:"Hello India Restaurant",             area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian",                            tel:"",          cert:"HK", expiry:"01/Sep/26", type:"restaurant", lat:22.2990,lng:114.1698, addr:"3rd Floor, Mary's Building, 71-77 Peking Road, Tsim Sha Tsui"},
+  {id:126,name:"House of Curry",                     area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian",                            tel:"6158 3200", cert:"H",  expiry:"11/Dec/26", type:"restaurant", lat:22.2992,lng:114.1743, addr:"Rm 12 A, G/F, Chung King Mansion, 36-44 Nathan Road, Tsim Sha Tsui"},
+  {id:127,name:"Indian Chopsticks Restaurant",       area:"Jordan",        region:"九龍", cuisine:"Indian",                            tel:"2563 4600", cert:"HK", expiry:"31/Jul/26", type:"restaurant", lat:22.3056,lng:114.1702, addr:"Ground Floor, No. 19 Kwun Chung Street, Jordan"},
+  {id:128,name:"Indulge Spices (Takeaway)",          area:"San Po Kong",   region:"九龍", cuisine:"Fast Food, Indian & Middle Eastern",tel:"64643684",  cert:"H",  expiry:"18/Sep/26", type:"restaurant", lat:22.3372,lng:114.2040, addr:"Room A1, Flat A2, 5/F Galaxy Factory Building, 25 Luk Hop St, San Po Kong"},
+  {id:129,name:"Kedai Indo",                         area:"Sham Shui Po",  region:"九龍", cuisine:"Indonesian",                        tel:"6094 4261", cert:"HK", expiry:"15/Jul/26", type:"restaurant", lat:22.3306,lng:114.1624, addr:"Shop 23, 9/F 37K Yen Chow Street, Sham Shui Po"},
+  {id:130,name:"Kesar Fusion",                       area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian, Middle Eastern, Fusion",    tel:"5592 0060", cert:"HK", expiry:"28/Sep/26", type:"restaurant", lat:22.2994,lng:114.1683, addr:"China Hong Kong City, Tower 6, Shop 2, 33 Canton Road, TST"},
+  {id:131,name:"KFC - APM Kwun Tong",                area:"Kwun Tong",     region:"九龍", cuisine:"Fast Food",                         tel:"3148 1122", cert:"HF", expiry:"31/May/26", type:"fastfood",   lat:22.3118,lng:114.2263, addr:"Shop L2-1, Level 2, APM, Millenium City 5, 418 Kwun Tong Road"},
+  {id:132,name:"KFC - Dragon Centre SSP",            area:"Sham Shui Po",  region:"九龍", cuisine:"Fast Food",                         tel:"2728 8191", cert:"HF", expiry:"23/Aug/26", type:"fastfood",   lat:22.3308,lng:114.1619, addr:"Shop 317, Level 3, Dragon Centre, 37K Yen Chow Street, Sham Shui Po"},
+  {id:133,name:"KFC - Jordan",                       area:"Jordan",        region:"九龍", cuisine:"Fast Food",                         tel:"2314 3818", cert:"HF", expiry:"24/Oct/26", type:"fastfood",   lat:22.3049,lng:114.1700, addr:"Shop 101 & 106-108, 1/F, Chuang's London Plaza, 219 Nathan Road, Jordan"},
+  {id:134,name:"KFC - Kai Tak",                      area:"Kai Tak",       region:"九龍", cuisine:"Fast Food",                         tel:"2986 3368", cert:"HF", expiry:"05/Mar/26", type:"fastfood",   lat:22.3282,lng:114.2091, addr:"Shop no. M3-104, Level 1, Kai Tak Mall 3, Kai Tak Sports Park"},
+  {id:135,name:"KFC - Mira Place TST",               area:"Tsim Sha Tsui",region:"九龍", cuisine:"Fast Food",                         tel:"2369 5633", cert:"HF", expiry:"23/Jul/26", type:"fastfood",   lat:22.2989,lng:114.1705, addr:"Shop G37 & G37A, G/F, Mira Place 1, 132 Nathan Road, Tsim Sha Tsui"},
+  {id:136,name:"KFC - Sau Mau Ping",                 area:"Kwun Tong",     region:"九龍", cuisine:"Fast Food",                         tel:"2573 4446", cert:"HF", expiry:"31/May/26", type:"fastfood",   lat:22.3128,lng:114.2252, addr:"Shop 114, 1/F, Sau Mau Ping Shopping Centre, 101 Sau Ming Road"},
+  {id:137,name:"KFC - Telford Plaza II",             area:"Kowloon Bay",   region:"九龍", cuisine:"Fast Food",                         tel:"2756 0756", cert:"HF", expiry:"30/Nov/26", type:"fastfood",   lat:22.3237,lng:114.2140, addr:"Shop 618, Level 6, Telford Plaza II, Kowloon Bay"},
+  {id:138,name:"KFC - Un Chau",                      area:"Cheung Sha Wan",region:"九龍", cuisine:"Fast Food",                         tel:"2793 2900", cert:"HF", expiry:"07/May/26", type:"fastfood",   lat:22.3327,lng:114.1567, addr:"Shop No. G04, G/F, Un Chau Shopping Centre, 303 Un Chau Street, Cheung Sha Wan"},
+  {id:139,name:"KFC - Wang Tau Hom",                 area:"Wang Tau Hom",  region:"九龍", cuisine:"Fast Food",                         tel:"2338 9397", cert:"HF", expiry:"23/Aug/26", type:"fastfood",   lat:22.3342,lng:114.1880, addr:"Shop Nos. U201-U203, Upper Ground Floor 2, Lok Fu Place, Wang Tau Hom"},
+  {id:140,name:"KFC - Yau Ma Tei",                   area:"Yau Ma Tei",    region:"九龍", cuisine:"Fast Food",                         tel:"2779 8768", cert:"HF", expiry:"05/Feb/26", type:"fastfood",   lat:22.3098,lng:114.1703, addr:"Shop 3, G/F, Kowloon Building, 555 Nathan Road, Yau Ma Tei"},
+  {id:141,name:"Koh-i-noor Indian Restaurant",       area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian",                            tel:"2368 3065", cert:"HK", expiry:"09/Feb/26", type:"restaurant", lat:22.2988,lng:114.1756, addr:"1/F, Peninsula Apartments, Unit 3-4, 16C Mody Road, Tsim Sha Tsui"},
+  {id:142,name:"Lady 13 Kitchen",                    area:"Tsim Sha Tsui",region:"九龍", cuisine:"Chinese / HK Chinese",              tel:"26316628",  cert:"HF", expiry:"30/Nov/26", type:"restaurant", lat:22.2986,lng:114.1720, addr:"Shop A, G/F, Valiant Commercial Building, 22-24 Prat Avenue, TST"},
+  {id:143,name:"LAMEES",                             area:"To Kwa Wan",    region:"九龍", cuisine:"Mediterranean",                     tel:"9181 9600", cert:"H",  expiry:"07/Jan/26", type:"restaurant", lat:22.3175,lng:114.1910, addr:"Shop 2, G/F, Sanford Mansion, 145 Pak Tai Street, To Kwa Wan"},
+  {id:144,name:"Mama Munchies",                      area:"Jordan",        region:"九龍", cuisine:"Middle Eastern",                    tel:"21515825",  cert:"H",  expiry:"25/May/26", type:"restaurant", lat:22.3054,lng:114.1700, addr:"Shop 1, G/F, Double Set Commercial Centre, No. 37A-37B Jordan Rd"},
+  {id:145,name:"Marouf & Puff Bake",                 area:"Tsim Sha Tsui",region:"九龍", cuisine:"Western Bakery",                    tel:"6993 4206", cert:"H",  expiry:"20/Feb/26", type:"restaurant", lat:22.2994,lng:114.1729, addr:"G/F, Seasons Commercial Building, 3-3A Humphreys Avenue, TST"},
+  {id:146,name:"Mamtom",                             area:"Tsim Sha Tsui",region:"九龍", cuisine:"Asian",                             tel:"2721 3600", cert:"HK", expiry:"20/Feb/26", type:"restaurant", lat:22.2982,lng:114.1756, addr:"Unit 1-6, 45 & 46, G/F, Wing On Plaza, 62 Mody Road, Tsim Sha Tsui"},
+  {id:147,name:"Makan Makan",                        area:"Tseung Kwan O", region:"九龍", cuisine:"Southeast Asian",                   tel:"2330 0389", cert:"HK", expiry:"20/Feb/26", type:"restaurant", lat:22.3076,lng:114.2598, addr:"Shop G01, G/F, Monterey Place, 23 Tong Chun Street, Tseung Kwan O"},
+  {id:148,name:"Marouf Café",                        area:"Tsim Sha Tsui",region:"九龍", cuisine:"Coffee Shop",                       tel:"6993 4206", cert:"H",  expiry:"20/Feb/26", type:"restaurant", lat:22.2992,lng:114.1724, addr:"Shop 3, Ground Floor, 8 Observatory Road, Tsim Sha Tsui"},
+  {id:149,name:"Mo Keung To - Jordan",               area:"Jordan",        region:"九龍", cuisine:"Asian / Chinese",                   tel:"6061 6545", cert:"HK", expiry:"27/Feb/26", type:"restaurant", lat:22.3059,lng:114.1693, addr:"Shop 10, G/F, Man Ying Building, 10 Man Ying Street, Jordan"},
+  {id:150,name:"Mo Keung To - Kwun Tong",            area:"Kwun Tong",     region:"九龍", cuisine:"Asian / Chinese",                   tel:"6061 6545", cert:"HK", expiry:"27/Feb/26", type:"restaurant", lat:22.3120,lng:114.2261, addr:"17 Yee On Street, Kwun Tong"},
+  {id:151,name:"Mr. BBQ",                            area:"Tsim Sha Tsui",region:"九龍", cuisine:"Korean",                            tel:"5460 3060", cert:"H",  expiry:"08/Jan/26", type:"restaurant", lat:22.2973,lng:114.1712, addr:"1/F, Surson Commercial Building, 140-142 Austin Road, Tsim Sha Tsui"},
+  {id:152,name:"My Kitchen",                         area:"Jordan",        region:"九龍", cuisine:"Tibetan",                           tel:"9845 9097", cert:"H",  expiry:"31/May/26", type:"restaurant", lat:22.3053,lng:114.1690, addr:"G/F, 2H Saigon Street, Jordan"},
+  {id:153,name:"New Istanbul Kebab",                 area:"Tsim Sha Tsui",region:"九龍", cuisine:"Turkish",                           tel:"9322 9008", cert:"H",  expiry:"In Process", type:"restaurant", lat:22.2992,lng:114.1727, addr:"Shop 8, G/F, Lee Wai Commercial Building, 1-3 Hart Avenue, TST"},
+  {id:154,name:"Pakeeza Food Restaurant",            area:"Tsim Sha Tsui",region:"九龍", cuisine:"Pakistani",                         tel:"9232 1171", cert:"H",  expiry:"01/Nov/26", type:"restaurant", lat:22.2995,lng:114.1748, addr:"RM.51, 2/F, Mirador Mansion, 58 Nathan Road, Tsim Sha Tsui"},
+  {id:155,name:"Phillip's Cafe",                     area:"Tsim Sha Tsui",region:"九龍", cuisine:"International",                     tel:"",          cert:"HK", expiry:"14/Sep/26", type:"restaurant", lat:22.3043,lng:114.1610, addr:"Cultural District, 2/F, WKCDA Tower West Kowloon, 8 Austin Rd W"},
+  {id:156,name:"Popeyes Louisiana Kitchen",          area:"Mong Kok",      region:"九龍", cuisine:"American Fast Food",                tel:"2333 3251", cert:"HK", expiry:"16/Jul/26", type:"fastfood",   lat:22.3192,lng:114.1693, addr:"Shop S2, B/F, T.O.P, 700 Nathan Road, Mong Kok"},
+  {id:157,name:"Rue Du Liban",                       area:"Tsim Sha Tsui",region:"九龍", cuisine:"Lebanese",                          tel:"2310 2922", cert:"HK", expiry:"04/Feb/26", type:"restaurant", lat:22.2976,lng:114.1737, addr:"22 Hillwood Court, Shop 2-7, 22-26 Hillwood Road, Tsim Sha Tsui"},
+  {id:158,name:"Saravanaa Bhavan",                   area:"Tsim Sha Tsui",region:"九龍", cuisine:"South Indian",                      tel:"2566 7577", cert:"HK", expiry:"24/Nov/26", type:"restaurant", lat:22.2984,lng:114.1733, addr:"3/F Golden Dragon Centre, 38-40 Cameron Road, Tsim Sha Tsui"},
+  {id:159,name:"Sepoy Mess",                         area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian British",                    tel:"2330 0316", cert:"HK", expiry:"20/Feb/26", type:"restaurant", lat:22.3045,lng:114.1608, addr:"Shop R008, Rooftop, Civic Square, Elements, 1 Austin Road West, TST"},
+  {id:160,name:"SHADI",                              area:"To Kwa Wan",    region:"九龍", cuisine:"Hamburger",                         tel:"5301 6534", cert:"H",  expiry:"07/Jan/26", type:"fastfood",   lat:22.3178,lng:114.1905, addr:"Shop A, G/F, 6 Mok Cheong Street, To Kwa Wan"},
+  {id:161,name:"Spice Bazaar",                       area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian",                            tel:"3422 8588", cert:"HK", expiry:"05/Mar/26", type:"restaurant", lat:22.2988,lng:114.1718, addr:"4/F, 10 Prat Avenue, Tsim Sha Tsui"},
+  {id:162,name:"Spice Restaurant & Bar",             area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian",                            tel:"2191 9880", cert:"HK", expiry:"21/Dec/26", type:"restaurant", lat:22.2978,lng:114.1730, addr:"2/F, One Knutsford Terrace, Tsim Sha Tsui"},
+  {id:163,name:"Spicy Fusion (Takeaway)",            area:"Tsz Wan Shan",  region:"九龍", cuisine:"Fast Food, Italian & Middle Eastern",tel:"9350 9725",cert:"H",  expiry:"12/Oct/26", type:"fastfood",   lat:22.3487,lng:114.2010, addr:"Shop 3A, G/F, Man Po Building, 28 Yuk Wah Cresent, Tsz Wan Shan"},
+  {id:164,name:"Tagline",                            area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian",                            tel:"2329 3311", cert:"HK", expiry:"03/Dec/26", type:"restaurant", lat:22.2981,lng:114.1755, addr:"Shop G18, 68 Mody Road, Empire Centre, G/F, Tsim Sha Tsui"},
+  {id:165,name:"Tasty Bites",                        area:"Hung Hom",      region:"九龍", cuisine:"Indian / Turkish",                  tel:"2330 0252", cert:"HK", expiry:"In Process", type:"restaurant", lat:22.3078,lng:114.1868, addr:"Shop E, G/F, Cheerful Commercial Building, 116-118 Ma Tau Wai Road, Hung Hom"},
+  {id:166,name:"Tribes",                             area:"Tsim Sha Tsui",region:"九龍", cuisine:"Pakistani",                         tel:"5373 1145", cert:"H",  expiry:"In Process", type:"restaurant", lat:22.2986,lng:114.1735, addr:"Floor 2, Eastern Flower Centre, 22-24 Cameron Road, Tsim Sha Tsui"},
+  {id:167,name:"Turkeyano",                          area:"Yau Ma Tei",    region:"九龍", cuisine:"Turkish",                           tel:"8100 3111", cert:"HK", expiry:"20/Sep/26", type:"restaurant", lat:22.3097,lng:114.1706, addr:"Shop 7A, G/F, Honour House, 375-381 Nathan Road, Yau Ma Tei"},
+  {id:168,name:"Turnep Roast & Relish",              area:"Hung Hom",      region:"九龍", cuisine:"Indian, Middle Eastern, Fusion",    tel:"5592 0060", cert:"H",  expiry:"19/Oct/26", type:"restaurant", lat:22.3074,lng:114.1870, addr:"Shop C104, G/F, Whampoa Building, 87-101 Baker Street, Whampoa, Hung Hom"},
+  {id:169,name:"Woodlands - TST",                    area:"Tsim Sha Tsui",region:"九龍", cuisine:"Indian Vegetarian",                 tel:"2369 3718", cert:"HK", expiry:"26/Jan/26", type:"restaurant", lat:22.2983,lng:114.1753, addr:"UG 16-17, Wing On Plaza, 61 Mody Road, Tsim Sha Tsui"},
+  {id:170,name:"Wu Zhi Jian Beef Noodles - TST",    area:"Tsim Sha Tsui",region:"九龍", cuisine:"Lanzhou Noodles",                   tel:"6918 7665", cert:"H",  expiry:"20/Mar/26", type:"restaurant", lat:22.2994,lng:114.1711, addr:"G/F, 11A Hau Fook Street, Tsim Sha Tsui"},
+  {id:171,name:"Zai Lan Zhou Beef Noodles",          area:"Sham Shui Po",  region:"九龍", cuisine:"Lanzhou Noodle",                    tel:"",          cert:"H",  expiry:"11/Dec/26", type:"restaurant", lat:22.3308,lng:114.1622, addr:"8F12 Dragon Centre, 37K Yen Chow Street, Sham Shui Po"},
+  {id:172,name:"Ziafat",                             area:"Tsim Sha Tsui",region:"九龍", cuisine:"Arabic",                            tel:"2312 1015", cert:"H",  expiry:"19/Nov/26", type:"restaurant", lat:22.2991,lng:114.1748, addr:"Flat B, 6/F, Harilela Mansion, 81 Nathan Road, Tsim Sha Tsui"},
+
+  // ── NEW TERRITORIES (29) ──
+  {id:200,name:"Cook & Cook",                        area:"Tuen Mun",      region:"新界", cuisine:"Indian, Italian & Middle Eastern",  tel:"9807 4401", cert:"H",  expiry:"In Process", type:"restaurant", lat:22.3910,lng:113.9730, addr:"Shop 7, G/F, Look Yuen, 6 Tsing Pak Path, Tuen Mun"},
+  {id:201,name:"Delicaso Pizza",                     area:"Tin Shui Wai",  region:"新界", cuisine:"Fast Food, Italian",                tel:"9498 7010", cert:"H",  expiry:"In Process", type:"fastfood",   lat:22.4594,lng:113.9963, addr:"Shop MK09, G/F, Fresh Central, Ping Yan Shopping Centre, 65 Ping Ha Road, TSW"},
+  {id:202,name:"Ebeneezer's - CUHK",                 area:"Shatin",        region:"新界", cuisine:"Indian, Italian & Middle Eastern",  tel:"2561 2081", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.4193,lng:114.2065, addr:"G05 Li Wai Chun Building, The Chinese University of HK, Shatin"},
+  {id:203,name:"Ebeneezer's - HKUST",                area:"Clear Water Bay",region:"新界",cuisine:"Indian, Italian & Middle Eastern",  tel:"3188 5550", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.3357,lng:114.2634, addr:"G044, G/F, Lee Shau Kee Business Building, HKUST, Clear Water Bay"},
+  {id:204,name:"Ebeneezer's - Science Park",         area:"Science Park",   region:"新界", cuisine:"Indian, Italian & Middle Eastern",  tel:"2610 0006", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.4195,lng:114.2110, addr:"Unit RT, G02A, G/F of Building 17w, Science Park"},
+  {id:205,name:"Ebeneezer's - Tseung Kwan O",        area:"Tseung Kwan O", region:"新界", cuisine:"Indian, Italian & Middle Eastern",  tel:"2519 8555", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.3076,lng:114.2600, addr:"Shop 21, G/F, Papillions Square, 21 Tong Chun St, Tseung Kwan O"},
+  {id:206,name:"Habib's - Tuen Mun",                 area:"Tuen Mun",      region:"新界", cuisine:"Indian & Middle Eastern",           tel:"2882 9892", cert:"HK", expiry:"04/Nov/26", type:"restaurant", lat:22.3912,lng:113.9725, addr:"Shop 58, 1/F, Gogo Mall, 112-140 Tuen Mun Heung Sze Wui Road, Tuen Mun"},
+  {id:207,name:"Habib's Kebab Biryani Curry",        area:"Shatin",        region:"新界", cuisine:"Indian & Middle Eastern",           tel:"255067343", cert:"H",  expiry:"04/Nov/26", type:"restaurant", lat:22.3797,lng:114.1978, addr:"Shop 102A1-05, 1/F King Wing Plaza Phase II, Shek Mun, Shatin"},
+  {id:208,name:"Hang Seng Univ - Halal Counter",     area:"Shatin",        region:"新界", cuisine:"Canteen",                           tel:"",          cert:"HF", expiry:"14/Dec/26", type:"restaurant", lat:22.4170,lng:114.2050, addr:"Hang Seng University, Block M, Level 2, Shatin"},
+  {id:209,name:"HKJC - Sha Tin Racecourse",          area:"Shatin",        region:"新界", cuisine:"International",                     tel:"",          cert:"HF", expiry:"17/Aug/26", type:"restaurant", lat:22.3784,lng:114.1885, addr:"Sha Tin Racecourse, Sha Tin"},
+  {id:210,name:"HKJC - Sha Tin Clubhouse",           area:"Shatin",        region:"新界", cuisine:"International",                     tel:"2966 6500", cert:"HF", expiry:"18/Aug/26", type:"restaurant", lat:22.3782,lng:114.1882, addr:"Sha Tin Clubhouse, Sha Tin Racecourse, Sha Tin"},
+  {id:211,name:"HKJC - Beas River Country Club",     area:"Sheung Shui",   region:"新界", cuisine:"International",                     tel:"2966 1967", cert:"HF", expiry:"18/Aug/26", type:"restaurant", lat:22.5013,lng:114.1278, addr:"Country Clubhouse, Kam Tsin Rd, Kwu Tung, Sheung Shui"},
+  {id:212,name:"KFC - City One Shatin",              area:"Shatin",        region:"新界", cuisine:"Fast Food",                         tel:"2637 2289", cert:"HF", expiry:"30/Nov/26", type:"fastfood",   lat:22.3818,lng:114.1975, addr:"Shop 124A, 125A & 126A, First Floor, Fortune City One, City One Shatin"},
+  {id:213,name:"KFC - Fanling",                      area:"Fanling",       region:"新界", cuisine:"Fast Food",                         tel:"2690 4883", cert:"HF", expiry:"07/May/26", type:"fastfood",   lat:22.4926,lng:114.1383, addr:"Shop 27 A, Level 2, Fanling Town Centre, 18 Fanling Station Road, Fanling"},
+  {id:214,name:"KFC - Ma On Shan",                   area:"Ma On Shan",    region:"新界", cuisine:"Fast Food",                         tel:"3514 5112", cert:"HF", expiry:"31/May/26", type:"fastfood",   lat:22.4230,lng:114.2362, addr:"Shop 2107, 2/F, MOSTown, 18 On Luk Street, Ma On Shan"},
+  {id:215,name:"KFC - Shatin Galleria",              area:"Shatin",        region:"新界", cuisine:"Fast Food",                         tel:"2690 4883", cert:"HF", expiry:"07/May/26", type:"fastfood",   lat:22.3800,lng:114.1877, addr:"Shop 9&11, G/F, Shatin Galleria, 18-24 Shan Mei Street, Fotan, Shatin"},
+  {id:216,name:"KFC - Shatin Centre",                area:"Shatin",        region:"新界", cuisine:"Fast Food",                         tel:"2606 3363", cert:"HF", expiry:"07/May/26", type:"fastfood",   lat:22.3795,lng:114.1874, addr:"Shop 26C, 26D, & 27, Level 3, Shatin Centre, Shatin"},
+  {id:217,name:"KFC - MCP Central TKO",              area:"Tseung Kwan O", region:"新界", cuisine:"Fast Food",                         tel:"3194 4626", cert:"HF", expiry:"07/May/26", type:"fastfood",   lat:22.3076,lng:114.2605, addr:"Shop 2005, L2/F, MCP Central, 8 Yan King Road, Tseung Kwan O"},
+  {id:218,name:"KFC - Tin Shui Wai",                 area:"Yuen Long",     region:"新界", cuisine:"Fast Food",                         tel:"2543 4500", cert:"HF", expiry:"30/Nov/26", type:"fastfood",   lat:22.4595,lng:113.9960, addr:"Shop.L108, Tin Shui Shopping Centre, Tin Shui Wai, Yuen Long"},
+  {id:219,name:"KFC - Tsing Yi",                     area:"Tsing Yi",      region:"新界", cuisine:"Fast Food",                         tel:"2326 9174", cert:"HF", expiry:"23/Aug/26", type:"fastfood",   lat:22.3469,lng:114.1024, addr:"Shop. 114C, G/F, Cheung Fat Plaza, Cheung Fat Estate, Tsing Yi"},
+  {id:220,name:"KFC - Tsuen Wan",                    area:"Tsuen Wan",     region:"新界", cuisine:"Fast Food",                         tel:"2499 2983", cert:"HF", expiry:"23/Aug/26", type:"fastfood",   lat:22.3716,lng:114.1128, addr:"Shop. 302, 3/F, New Town Mall, Nan Fung Centre, 264-298 Castle Peak Road, Tsuen Wan"},
+  {id:221,name:"KFC - Tuen Mun",                     area:"Tuen Mun",      region:"新界", cuisine:"Fast Food",                         tel:"2456 9638", cert:"HF", expiry:"31/May/26", type:"fastfood",   lat:22.3908,lng:113.9733, addr:"Shop. S-320A & B, Level 3, Zone S, H.A.N.D.S Yau Oi Estate, Tuen Mun"},
+  {id:222,name:"KFC - Tuen Mun 2",                   area:"Tuen Mun",      region:"新界", cuisine:"Fast Food",                         tel:"2850 7945", cert:"HF", expiry:"05/Mar/26", type:"fastfood",   lat:22.3913,lng:113.9720, addr:"Shop. 103 D, 1/F, Fu Tai Shopping Centre, Fu Tai Estate, Tuen Mun"},
+  {id:223,name:"KFC - Yuen Long",                    area:"Yuen Long",     region:"新界", cuisine:"Fast Food",                         tel:"2470 3872", cert:"HF", expiry:"31/May/26", type:"fastfood",   lat:22.4443,lng:114.0225, addr:"Shop 7 on G/F & 1/F, Wing Light Building, 68-76 Castle Peak Road, Yuen Long"},
+  {id:224,name:"Onion Hub - Tseung Kwan O",          area:"Tseung Kwan O", region:"新界", cuisine:"Indian, Italian & Middle Eastern",  tel:"6544 6056", cert:"H",  expiry:"16/Jan/26", type:"restaurant", lat:22.3080,lng:114.2602, addr:"1/F, Trojan Food Club, The Parkside Mall, 18 Tong Chun Street, Tseung Kwan O"},
+  {id:225,name:"Shaffi's Indian Restaurant",         area:"Yuen Long",     region:"新界", cuisine:"Indian",                            tel:"9309 5926", cert:"H",  expiry:"23/Oct/25", type:"restaurant", lat:22.4446,lng:114.0220, addr:"Shop 5, Fook Tak Building, 234 Castle Peak Road, Yuen Long"},
+  {id:226,name:"The Hunter",                         area:"Tseung Kwan O", region:"新界", cuisine:"Mediterranean",                     tel:"2330 0204", cert:"HK", expiry:"20/Feb/26", type:"restaurant", lat:22.3082,lng:114.2605, addr:"Shop 11, G/F, Alto Residences, 29 Tong Yin Street, Tseung Kwan O"},
+  {id:227,name:"Turkish Kebab - Sai Kung",           area:"Sai Kung",      region:"新界", cuisine:"Turkish",                           tel:"2606 7038", cert:"H",  expiry:"19/May/26", type:"restaurant", lat:22.3810,lng:114.2742, addr:"Shop 15, G/F, Kam Po Court, Sai Kung Hoi Pong Square, Sai Kung"},
+  {id:228,name:"Zeugma Istanbul Express",            area:"Sai Kung",      region:"新界", cuisine:"Turkish",                           tel:"2706 0622", cert:"HK", expiry:"21/Dec/26", type:"restaurant", lat:22.3813,lng:114.2745, addr:"Shop A, G/F & Cockloft Hop Yik Lau, 74 Fuk Man Road, Sai Kung"},
+
+  // ── LANTAU (9) ──
+  {id:300,name:"Ebeneezer's - Discovery Bay",        area:"Discovery Bay", region:"大嶼山",cuisine:"Indian, Italian & Middle Eastern",  tel:"2987 0036", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.2926,lng:113.9490, addr:"Shop 102A, 1/F Block A, Discovery Bay Plaza, Discovery Bay"},
+  {id:301,name:"Ebeneezer's - Ngong Ping",           area:"Ngong Ping",    region:"大嶼山",cuisine:"Indian, Italian & Middle Eastern",  tel:"2259 3988", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.2573,lng:113.9149, addr:"Shop 9A, G/F, Ngong Ping Themed Village, Ngong Ping"},
+  {id:302,name:"Ebeneezer's - Tung Chung",           area:"Tung Chung",    region:"大嶼山",cuisine:"Indian, Italian & Middle Eastern",  tel:"2730 0988", cert:"HK", expiry:"06/May/26", type:"restaurant", lat:22.2899,lng:113.9431, addr:"Shop G11, Sheraton Hotel, 9 Yi Tung Road, Tung Chung"},
+  {id:303,name:"Handi Indian Restaurant",            area:"Tung Chung",    region:"大嶼山",cuisine:"Indian",                            tel:"2988 8675", cert:"HK", expiry:"27/Jan/26", type:"restaurant", lat:22.2898,lng:113.9428, addr:"G/F, No.8, Ha Ling Pei Tsuen, Tung Chung Road, Tung Chung"},
+  {id:304,name:"KFC - Asiaworld-Expo",               area:"Airport",       region:"大嶼山",cuisine:"Fast Food",                         tel:"2670 3302", cert:"HF", expiry:"07/Dec/26", type:"fastfood",   lat:22.3206,lng:113.9428, addr:"F&B 04, G/F, Asiaworld-Expo, Lantau"},
+  {id:305,name:"KFC - Tung Chung Yat Tung",          area:"Tung Chung",    region:"大嶼山",cuisine:"Fast Food",                         tel:"2350 3310", cert:"HF", expiry:"30/Nov/26", type:"fastfood",   lat:22.2902,lng:113.9440, addr:"Shop No.17, Ground Floor, Yat Tung Shopping Centre, 8 Yat Tung Street, Tung Chung"},
+  {id:306,name:"Maison Du Mezze",                    area:"Tung Chung",    region:"大嶼山",cuisine:"Lebanese",                          tel:"2330 0131", cert:"HK", expiry:"20/Feb/26", type:"restaurant", lat:22.2897,lng:113.9425, addr:"G/F, Shop G10, T-bay, Sheraton Hotel, 9 Yi Tung Road, Tung Chung"},
+  {id:307,name:"Wok n Roll",                         area:"Tung Chung",    region:"大嶼山",cuisine:"Asian Mixed",                       tel:"2735 5555", cert:"HK", expiry:"04/Jun/26", type:"restaurant", lat:22.2896,lng:113.9422, addr:"Shop G06, G/F, T-Bay, 9 Yi Tung Road, Tung Chung"},
+  {id:308,name:"Lamma Rainbow Seafood Restaurant",   area:"Lamma Island",  region:"大嶼山",cuisine:"Local Seafood",                      tel:"2982 8100", cert:"HF", expiry:"17/Jul/26", type:"restaurant", lat:22.2025,lng:114.1023, addr:"23-27 First Street, Sok Kwu Wan, Lamma Island"},
+
+  // ── HOTELS (selected major ones) ──
+  {id:400,name:"Conrad Hotel - Garden Café",         area:"Admiralty",     region:"酒店",  cuisine:"International",                     tel:"",          cert:"HK", expiry:"13/Jul/26", type:"hotel", lat:22.2793,lng:114.1645, addr:"Pacific Place, 88 Queensway, Admiralty"},
+  {id:401,name:"Four Seasons - The Lounge",          area:"Central",       region:"酒店",  cuisine:"International",                     tel:"3196 8899", cert:"HF", expiry:"07/Aug/26", type:"hotel", lat:22.2855,lng:114.1575, addr:"8 Finance Street, Central"},
+  {id:402,name:"Grand Hyatt HK - Grand Café",        area:"Wan Chai",      region:"酒店",  cuisine:"International",                     tel:"2584 7882", cert:"HF", expiry:"17/Nov/26", type:"hotel", lat:22.2831,lng:114.1753, addr:"Lobby Level, Grand Hyatt HK, 1 Harbour Road, Wan Chai"},
+  {id:403,name:"Hotel ICON - The Market",            area:"Tsim Sha Tsui", region:"酒店",  cuisine:"International",                     tel:"3400 1342", cert:"HF", expiry:"15/Dec/26", type:"hotel", lat:22.2978,lng:114.1743, addr:"2/F, 17 Science Museum Road, Tsim Sha Tsui"},
+  {id:404,name:"Intercontinental Grand Stanford",    area:"Tsim Sha Tsui", region:"酒店",  cuisine:"International",                     tel:"2721 5161", cert:"HK", expiry:"04/Oct/26", type:"hotel", lat:22.2968,lng:114.1777, addr:"70 Mody Road, Tsim Sha Tsui East"},
+  {id:405,name:"Island Shangri La - Café TOO",       area:"Admiralty",     region:"酒店",  cuisine:"International",                     tel:"2820 8571", cert:"HK", expiry:"02/Mar/26", type:"hotel", lat:22.2796,lng:114.1648, addr:"Pacific Place, Supreme Court Road, Admiralty"},
+  {id:406,name:"JW Marriott",                        area:"Admiralty",     region:"酒店",  cuisine:"International",                     tel:"2810 8366", cert:"HF", expiry:"11/Dec/26", type:"hotel", lat:22.2794,lng:114.1647, addr:"Pacific Place, 88 Queensway, Admiralty"},
+  {id:407,name:"Kerry Hotel - Big Bay Café",         area:"Hung Hom",      region:"酒店",  cuisine:"International",                     tel:"2252 5888", cert:"HK", expiry:"04/Mar/26", type:"hotel", lat:22.3080,lng:114.1878, addr:"Kerry Hotel, 3/F, 38 Hung Luen Road, Hung Hom Bay"},
+  {id:408,name:"Kowloon Shangri La - Café Kool",     area:"Tsim Sha Tsui", region:"酒店",  cuisine:"International",                     tel:"2733 8928", cert:"HK", expiry:"01/Jul/26", type:"hotel", lat:22.2963,lng:114.1763, addr:"64 Mody Road, Tsim Sha Tsui"},
+  {id:409,name:"The Mira - Cuisine Cuisine",         area:"Tsim Sha Tsui", region:"酒店",  cuisine:"International",                     tel:"2315 5822", cert:"HF", expiry:"06/Jan/26", type:"hotel", lat:22.2989,lng:114.1706, addr:"3/F, The Mira HK, 118 Nathan Road, Tsim Sha Tsui"},
+  {id:410,name:"The Mira - Yamm",                    area:"Tsim Sha Tsui", region:"酒店",  cuisine:"International",                     tel:"2315 5111", cert:"HF", expiry:"01/Sep/26", type:"hotel", lat:22.2991,lng:114.1708, addr:"118-130 Nathan Road, Tsim Sha Tsui"},
+  {id:411,name:"The Peninsula HK - Hankow 1",        area:"Tsim Sha Tsui", region:"酒店",  cuisine:"International",                     tel:"2920 2888", cert:"HF", expiry:"03/Jul/26", type:"hotel", lat:22.2952,lng:114.1720, addr:"22 Salisbury Road, Tsim Sha Tsui"},
+  {id:412,name:"The Ritz Carlton",                   area:"West Kowloon",  region:"酒店",  cuisine:"International",                     tel:"2263 2263", cert:"HF", expiry:"07/Sep/26", type:"hotel", lat:22.3037,lng:114.1605, addr:"ICC, 1 Austin Road West, West Kowloon"},
+  {id:413,name:"Ocean Park Marriott - Marina Kitchen",area:"Aberdeen",     region:"酒店",  cuisine:"International",                     tel:"3555 1700", cert:"HF", expiry:"02/Sep/26", type:"hotel", lat:22.2472,lng:114.1492, addr:"G/F, Marina Wing, 180 Wong Chuk Hang Road, Aberdeen"},
+  {id:414,name:"Regal HK Hotel - Café Rivoli",       area:"Causeway Bay",  region:"酒店",  cuisine:"International",                     tel:"2890 6633", cert:"HF", expiry:"04/Aug/26", type:"hotel", lat:22.2808,lng:114.1840, addr:"Regal HongKong Hotel, 88 Yee Wo Street, Causeway Bay"},
+  {id:415,name:"Dorsett Wan Chai - Dorsett Kitchen", area:"Wan Chai",      region:"酒店",  cuisine:"International",                     tel:"3552 1111", cert:"HF", expiry:"09/Mar/26", type:"hotel", lat:22.2760,lng:114.1760, addr:"Dorsett Wan Chai, 1/F, 387-397 Queen's Road East, Wan Chai"},
+  {id:416,name:"Harbour Grand HK - Harbour Grand Café",area:"North Point", region:"酒店",  cuisine:"International",                     tel:"2121 2688", cert:"HF", expiry:"12/Feb/26", type:"hotel", lat:22.2908,lng:114.2053, addr:"23 Oil Street, North Point"},
+  {id:417,name:"HK SkyCity Marriott - SkyCity Bistro",area:"Airport",     region:"酒店",  cuisine:"International",                     tel:"3969 1888", cert:"HF", expiry:"27/Sep/26", type:"hotel", lat:22.3208,lng:113.9432, addr:"Hong Kong SkyCity Marriot Hotel, 1 Sky City Road East, HKIA"},
+  {id:418,name:"Dorsett Kai Tak - Siete Ocho",       area:"Kowloon City",  region:"酒店",  cuisine:"Spanish and Sichuan Fusion",        tel:"3528 8288", cert:"HF", expiry:"09/Mar/26", type:"hotel", lat:22.3282,lng:114.2096, addr:"Dorsett Kai Tak, 2/F, 43 Shing Kai Road, Kowloon City"},
+  {id:419,name:"Dorsett Mongkok - Dorsett Kitchen",  area:"Tai Kok Tsui",  region:"酒店",  cuisine:"International",                     tel:"3987 2288", cert:"HF", expiry:"09/Mar/26", type:"hotel", lat:22.3262,lng:114.1636, addr:"Dorsett Mong Kok, 88 Tai Kok Tsui road"},
+  {id:420,name:"Alva House - Alva Hotel By Royal",   area:"Shatin",        region:"酒店",  cuisine:"International",                     tel:"3653 1168", cert:"HF", expiry:"22/Dec/26", type:"hotel", lat:22.3812,lng:114.1940, addr:"1 Yuen Hong Street, Shatin"},
+];
+
+// ── MAP ──
+var map = new google.maps.Map(document.getElementById('map'), {
+  center: {lat: 22.33, lng: 114.16},
+  zoom: 12,
+  styles: [
+    {elementType:'geometry',stylers:[{color:'#1d2c4d'}]},
+    {elementType:'labels.text.fill',stylers:[{color:'#8ec3b9'}]},
+    {elementType:'labels.text.stroke',stylers:[{color:'#1a3646'}]},
+    {featureType:'water',elementType:'geometry',stylers:[{color:'#17263c'}]},
+    {featureType:'road',elementType:'geometry',stylers:[{color:'#304a7d'}]},
+    {featureType:'poi',elementType:'geometry',stylers:[{color:'#283d6a'}]}
+  ]
+});
+var infoWindow = new google.maps.InfoWindow();
+var iconColors = {H:'#2ecc71', HK:'#3a9ee0', HF:'#cc77cc'};
+
+function mapsLink(r){
+  var q=r.addr?r.addr:(r.name+' '+r.area+' Hong Kong');
+  return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
+}
+function certLabel(c){return c==='H'?'H清真餐廳':c==='HK'?'HK清真廚房':'HF清真友善';}
+function regionCls(r){
+  if(r.region==='港島')return 'tag-hki';if(r.region==='九龍')return 'tag-kln';
+  if(r.region==='新界')return 'tag-nt';if(r.region==='大嶼山')return 'tag-ltau';
+  return 'tag-hotel';
+}
+
+function buildPopup(r){
+  return '<div class="pn">'+r.name+'</div>'+
+    '<div class="pa">📍 '+(r.addr||r.area+', Hong Kong')+'</div>'+
+    '<div class="pi">📞 '+(r.tel||'N/A')+' &nbsp; 🍽 '+r.cuisine+'<br>📅 認證到期：'+r.expiry+'</div>'+
+    '<a href="'+mapsLink(r)+'" target="_blank" class="pnav">🗺 Google Maps 導航 →</a>'+
+    '<div class="ptags">'+
+    '<span class="tag '+regionCls(r)+'">'+r.region+'</span>'+
+    '<span class="tag cert-'+r.cert+'" style="font-size:.6rem;padding:.1rem .4rem;">☪ '+r.cert+'</span>'+
+    '</div>';
+}
+
+function buildCard(r){
+  var cuis=r.cuisine.length>22?r.cuisine.substring(0,22)+'…':r.cuisine;
+  return '<div class="rc" id="card-'+r.id+'" onclick="focusR('+r.id+')">'+
+    '<div class="rn">'+r.name+'</div>'+
+    '<div class="ra">📍 '+r.area+' &nbsp;<span class="cert-'+r.cert+'" style="font-size:.65rem;">☪'+r.cert+'</span></div>'+
+    '<div class="tags">'+
+    '<span class="tag '+regionCls(r)+'">'+r.region+'</span>'+
+    '<span class="tag tag-cuisine">'+cuis+'</span>'+
+    '</div>'+
+    '<a href="'+mapsLink(r)+'" target="_blank" class="nav-btn" onclick="event.stopPropagation()">🗺 導航 →</a>'+
+    '</div>';
+}
+
+var markers=[],markerMap={},activeCard=null;
+
+function render(list){
+  markers.forEach(function(m){m.setMap(null);});
+  markers=[];markerMap={};
+  updateCountBadge(list.length);
+  var sb=document.getElementById('sidebar');
+  if(!list.length){sb.innerHTML='<div class="no-result">☪<br><br>呢個條件下暫時冇搵到<br><span style="font-size:.75rem;color:#5a7a9a">請嘗試其他篩選</span></div>';return;}
+  sb.innerHTML=list.map(buildCard).join('');
+  var bounds = new google.maps.LatLngBounds();
+  list.forEach(function(r){
+    var color = iconColors[r.cert] || iconColors['H'];
+    var m = new google.maps.Marker({
+      position: {lat: r.lat, lng: r.lng},
+      map: map,
+      icon: {
+        path: 'M11 0C4.9 0 0 4.9 0 11c0 7.7 11 19 11 19S22 18.7 22 11C22 4.9 17.1 0 11 0z',
+        fillColor: color,
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 1.2,
+        scale: 1.2,
+        anchor: new google.maps.Point(11, 30)
+      },
+      title: r.name
+    });
+    m.addListener('click', function(){
+      infoWindow.setContent(buildPopup(r));
+      infoWindow.open(map, m);
+      highlightCard(r.id);
+    });
+    markers.push(m);
+    markerMap[r.id]=m;
+    bounds.extend({lat: r.lat, lng: r.lng});
+  });
+  if(list.length>1){map.fitBounds(bounds, {padding: 40});}
+  else if(list.length===1){map.setCenter({lat:list[0].lat, lng:list[0].lng});map.setZoom(16);}
+}
+
+function highlightCard(id){
+  if(activeCard){var p=document.getElementById('card-'+activeCard);if(p)p.classList.remove('active');}
+  activeCard=id;
+  var c=document.getElementById('card-'+id);
+  if(c){c.classList.add('active');c.scrollIntoView({behavior:'smooth',block:'nearest'});}
+}
+
+function focusR(id){
+  var r=R.find(function(x){return x.id===id;});if(!r)return;
+  map.setCenter({lat:r.lat, lng:r.lng});
+  map.setZoom(16);
+  var m=markerMap[id];
+  if(m){
+    infoWindow.setContent(buildPopup(r));
+    infoWindow.open(map, m);
+  }
+  highlightCard(id);
+}
+
+function applyFilters(){
+  var region=document.getElementById('regionFilter').value;
+  var type=document.getElementById('typeFilter').value;
+  var cert=document.getElementById('certFilter').value;
+  render(R.filter(function(r){
+    if(region!=='all'&&r.region!==region)return false;
+    if(type!=='all'&&r.type!==type)return false;
+    if(cert!=='all'&&r.cert!==cert)return false;
+    return true;
+  }));
+}
+
+render(R);
+</script>
+</body>
+</html>
